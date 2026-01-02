@@ -7,9 +7,9 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import * as authUtils from '../utils/auth';
 
-
-const ADMIN_EMAIL = ADMIN_CREDENTIALS?.email || 'narishkamal88@gmail.com';
+const ADMIN_EMAIL = 'narishkamal88@gmail.com';
 
 const AuthContext = createContext();
 
@@ -40,9 +40,14 @@ export const AuthProvider = ({ children }) => {
     // Firebase path: create user and optionally set displayName
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const finalDisplayName = displayName || (email ? email.split('@')[0] : undefined);
+    const avatar = `https://ui-avatars.com/api/?name=${finalDisplayName}&background=dc3545&color=fff`;
+
     if (finalDisplayName) {
       try {
-        await updateProfile(userCredential.user, { displayName: finalDisplayName });
+        await updateProfile(userCredential.user, {
+          displayName: finalDisplayName,
+          photoURL: avatar
+        });
       } catch (e) {
         console.warn('updateProfile failed', e);
       }
@@ -54,7 +59,9 @@ export const AuthProvider = ({ children }) => {
       id: u.uid,
       email: u.email,
       name: u.displayName || finalDisplayName || (u.email ? u.email.split('@')[0] : 'User'),
-      role: u.email === ADMIN_EMAIL ? 'admin' : 'user'
+      avatar: u.photoURL || avatar,
+      role: u.email === ADMIN_EMAIL ? 'admin' : 'user',
+      joinedDate: new Date().toISOString()
     };
     // Keep a local copy for non-Firebase consumers
     localStorage.setItem('currentUser', JSON.stringify(user));
@@ -69,11 +76,14 @@ export const AuthProvider = ({ children }) => {
     if (auth) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const u = userCredential.user;
+      const username = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
       const user = {
         id: u.uid,
         email: u.email,
-        name: u.displayName || (u.email ? u.email.split('@')[0] : 'User'),
-        role: u.email === ADMIN_EMAIL ? 'admin' : 'user'
+        name: username,
+        avatar: u.photoURL || `https://ui-avatars.com/api/?name=${username}&background=dc3545&color=fff`,
+        role: u.email === ADMIN_EMAIL ? 'admin' : 'user',
+        joinedDate: u.metadata.creationTime
       };
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('isAuthenticated', 'true');
@@ -111,12 +121,17 @@ export const AuthProvider = ({ children }) => {
     if (auth && typeof onAuthStateChanged === 'function') {
       const unsubscribe = onAuthStateChanged(auth, (u) => {
         if (u) {
+          const username = u.displayName || (u.email ? u.email.split('@')[0] : 'User');
           const user = {
             id: u.uid,
             email: u.email,
-            name: u.displayName || (u.email ? u.email.split('@')[0] : 'User'),
-            role: u.email === ADMIN_EMAIL ? 'admin' : 'user'
+            name: username,
+            avatar: u.photoURL || `https://ui-avatars.com/api/?name=${username}&background=dc3545&color=fff`,
+            role: u.email === ADMIN_EMAIL ? 'admin' : 'user',
+            joinedDate: u.metadata.creationTime
           };
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem('isAuthenticated', 'true');
           setCurrentUser(user);
           setUserRole(user.role);
         } else {

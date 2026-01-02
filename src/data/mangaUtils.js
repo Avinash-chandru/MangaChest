@@ -1,5 +1,5 @@
 import { mangaData } from './mangaData';
-import * as mangaService from '../config/mangaService';
+import mangaService from '../config/mangaService';
 
 // Legacy synchronous helpers (kept for quick local usage / testing)
 export const getTopRatedManga = () => {
